@@ -33,3 +33,11 @@ interpretBehavior f as = do
         return bs
     i <- readIORef init
     return (i, bs)
+
+shouldHaveInitialState :: (Show b, Eq b) => (forall t. Event t a -> Behavior t b) -> b -> Expectation
+shouldHaveInitialState behavior expected = do
+    result <- interpretBehavior behavior []
+    fst result `shouldBe` expected
+
+count :: Event t a -> Behavior t Int
+count = accumB 0 . fmap (const (+1))
