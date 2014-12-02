@@ -39,8 +39,14 @@ shouldHaveInitialState behavior expected = do
     result <- interpretBehavior behavior []
     fst result `shouldBe` expected
 
-withEvents :: (forall t. Event t a -> Event t b) -> [a] -> IO [[b]]
-withEvents = interpretEvent
+class WithEvents w where
+    withEvents :: (forall t. Event t a -> w t b) -> [a] -> IO [[b]]
+
+instance WithEvents Event where
+    withEvents = interpretEvent
+
+instance WithEvents Behavior where
+    withEvents f = fmap snd . interpretBehavior f
 
 shouldProduce :: (Show b, Eq b) => IO [[b]] -> [[b]] -> Expectation
 shouldProduce mactual expected = do
