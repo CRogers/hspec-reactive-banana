@@ -39,5 +39,18 @@ shouldHaveInitialState behavior expected = do
     result <- interpretBehavior behavior []
     fst result `shouldBe` expected
 
+withEvents :: (forall t. Event t a -> Event t b) -> [a] -> IO [[b]]
+withEvents = interpretEvent
+
+shouldProduce :: (Show b, Eq b) => IO [[b]] -> [[b]] -> Expectation
+shouldProduce mactual expected = do
+    actual <- mactual
+    actual `shouldBe` expected
+
+test = diamond `withEvents` [1] `shouldProduce` [[2,2]]
+
 count :: Event t a -> Behavior t Int
 count = accumB 0 . fmap (const (+1))
+
+diamond :: Event t a -> Event t a
+diamond e = union e e
