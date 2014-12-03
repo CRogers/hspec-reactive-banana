@@ -1,4 +1,4 @@
-{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE Rank2Types, TypeFamilies #-}
 
 module Test.Hspec.ReactiveBanana where
 
@@ -40,23 +40,29 @@ shouldHaveInitialState behavior expected = do
     fst result `shouldBe` expected
 
 class WithEvents w where
-    withEvents :: (forall t. Event t a -> w t b) -> [a] -> IO [[b]]
+    type Out w b
+    withEvents :: (forall t. Event t a -> w t b) -> [a] -> IO (Out w b)
 
 instance WithEvents Event where
+    type Out Event b = [[b]]
     withEvents = interpretEvent
 
 instance WithEvents Behavior where
-    withEvents f = fmap snd . interpretBehavior f
+    type Out Behavior b = [b]
+    withEvents f = fmap (map head . snd) . interpretBehavior f
 
-shouldProduce :: (Show b, Eq b) => IO [[b]] -> [[b]] -> Expectation
-shouldProduce mactual expected = do
+shouldProduce :: (Show b, Eq b) => IO [b] -> [b] -> Expectation
+shouldProduce mactual expected = mactual >>= (`shouldBe` expected)
+
+shouldHaveEndState :: (Show b, Eq b) => IO [b] -> b -> Expectation
+shouldHaveEndState mactual expected = do
     actual <- mactual
-    actual `shouldBe` expected
+    last actual `shouldBe` expected
 
-test = diamond `withEvents` [1] `shouldProduce` [[2,2]]
+test = count `withEvents` [()] `shouldHaveEndState` 11
 
 count :: Event t a -> Behavior t Int
 count = accumB 0 . fmap (const (+1))
 
-diamond :: Event t a -> Event t a
-diamond e = union e e
+dup :: Event t a -> Event t a
+dup e = union e e
